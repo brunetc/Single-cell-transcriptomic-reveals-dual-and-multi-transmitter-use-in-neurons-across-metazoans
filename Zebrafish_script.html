@@ -1,0 +1,121 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"># Load libaries -----------------------------------------------------------</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">library(dplyr)</span></p>
+<p class="p1"><span class="s1">library(Seurat)</span></p>
+<p class="p1"><span class="s1">library(ggplot2)</span></p>
+<p class="p1"><span class="s1">library(UpSetR)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Download an load file -----------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">fall3 &lt;- readRDS(“~/fall3.rds")</span></p>
+<p class="p2"><br></p>
+<p class="p1"># Determine dimensionality of the data ------------------------------------</p>
+<p class="p1">ElbowPlot(object = fall3, ndims = 100)</p>
+<p class="p2"><br></p>
+<p class="p1"># Clustering --------------------------------------------------------------</p>
+<p class="p1">fall3 &lt;- FindNeighbors(fall3, dims = 1:40)</p>
+<p class="p1">fall3 &lt;- FindClusters(object = fall3, resolution = 2)</p>
+<p class="p1">fall3 &lt;- RunUMAP(object = fall3, dims = 1:40, seed.use = 42)<span class="Apple-converted-space"> </span></p>
+<p class="p1">DimPlot(object = fall3, reduction = "umap", label = F) + NoLegend() + theme_get()</p>
+<p class="p1">saveRDS(fall3, "fall3.rds")</p>
+<p class="p2"><br></p>
+<p class="p1"># subset ----</p>
+<p class="p1">neurotransmitters &lt;- subset(fall3, subset = gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1 | slc17a6b &gt; 1 | slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1 | slc6a9 &gt; 1)</p>
+<p class="p1">neurotransmitters</p>
+<p class="p1">neurotransmitters &lt;- NormalizeData(object = neurotransmitters, verbose = FALSE)</p>
+<p class="p1">neurotransmitters &lt;- ScaleData(object = neurotransmitters, verbose = FALSE)</p>
+<p class="p1">neurotransmitters &lt;- FindVariableFeatures(object = neurotransmitters, selection.method = "vst", nfeatures = 2000)</p>
+<p class="p1">neurotransmitters &lt;- RunPCA(object = neurotransmitters, features = VariableFeatures(object = neurotransmitters), npcs = 100)</p>
+<p class="p1">ElbowPlot(object = neurotransmitters, ndims = 100)</p>
+<p class="p1">neurotransmitters &lt;- FindNeighbors(neurotransmitters, dims = 1:38)</p>
+<p class="p1">neurotransmitters &lt;- FindClusters(object = neurotransmitters, resolution = 1)</p>
+<p class="p1">neurotransmitters &lt;- RunUMAP(object = neurotransmitters, dims = 1:38)</p>
+<p class="p1">DimPlot(object = neurotransmitters, reduction = "umap", label = TRUE)</p>
+<p class="p2"><br></p>
+<p class="p1"># Co-expression quantification ----</p>
+<p class="p1">###GABAergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Glutamatergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = slc17a6b &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = slc6a9 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc17a6b &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###GABAergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###GABAergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Glutamatergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (slc17a6b &gt; 1) &amp; (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Glutamatergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (slc17a6b &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Cholinergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc17a6b &gt; 1) &amp; (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###GABAergic and Glutamatergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc17a6b &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Glutamatergic and Cholinergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (slc17a6b &gt; 1) &amp; (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###GABAergic and Cholinergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic and Cholinergic and Glycinergic</p>
+<p class="p1">length(WhichCells(object = neurotransmitters, expression = (gad1b &gt; 1 | gad2 &gt; 1 | slc32a1 &gt; 1) &amp; (slc17a6b &gt; 1) &amp; (slc18a3a &gt; 1 | slc44a2 &gt; 1 | slc44a5b &gt; 1 | slc44a5a &gt; 1) &amp; (slc6a9 &gt; 1)))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p2"><br></p>
+<p class="p1">expressionInput &lt;- c(GABAergic_Neurons = 20323,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 8179,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons= 9896,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Glycinergic_Neurons=4930, <span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons` = 2429,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 4385,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glycinergic_Neurons` = 1939,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 2188,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Glycinergic_Neurons` = 703,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glycinergic_Neurons` = 1013,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons`= 701,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Glycinergic_Neurons`= 247,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons`= 218,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons`= 468,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons`= 79)</p>
+<p class="p2"><br></p>
+<p class="p1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("deepskyblue3", "violetred2", "limegreen", "purple3"), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="s1"># UMAP Plot ------------------------------------------------------------</span></p>
+<p class="p1">plot1&lt;-FeaturePlot(neurotransmitters, features = c("gad1b"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p1">plot2&lt;-FeaturePlot(neurotransmitters, features = c("slc44a2"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p1">plot3&lt;-FeaturePlot(neurotransmitters, features = c("slc17a6b"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot3&lt;-AugmentPlot(plot3, dpi = 200)</p>
+<p class="p1">plot4&lt;-FeaturePlot(neurotransmitters, features = c("slc6a9"), cols = c("lightgrey", "purple3"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot4&lt;-AugmentPlot(plot4, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">plot_merge &lt;- CombinePlots(plots = list(plot1, plot2, plot3, plot4), ncol=2)</p>
+<p class="p1">plot_merge</p>
+</body>
+</html>

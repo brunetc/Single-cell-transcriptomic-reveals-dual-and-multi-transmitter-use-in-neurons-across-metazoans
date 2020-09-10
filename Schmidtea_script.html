@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"># Load libaries -----------------------------------------------------------</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">library(dplyr)</span></p>
+<p class="p1"><span class="s1">library(Seurat)</span></p>
+<p class="p1"><span class="s1">library(ggplot2)</span></p>
+<p class="p1"><span class="s1">library(UpSetR)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># load matrix -----------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">MatrixData &lt;- read.table(“~/Schmidtea_meditarranea/BrainClusteringDigitalExpressionMatrix.dge.txt")</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Set up SEURAT object -----------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">SM &lt;- CreateSeuratObject(counts = MatrixData, project="SM", min.cells = 1, min.features = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Normalizing the data ----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">SM &lt;- NormalizeData(object = SM, normalization.method = "LogNormalize", scale.factor = 10000)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Find variable genes -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">SM &lt;- FindVariableFeatures(object = SM, selection.method = "vst")</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Scaling the data --------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">all.genes &lt;- rownames(x = SM)</span></p>
+<p class="p1"><span class="s1">SM &lt;- ScaleData(object = SM, features = all.genes)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Dimensional reduction ---------------------------------------------------</span></p>
+<p class="p1"><span class="s1">SM &lt;- RunPCA(object = SM, features = VariableFeatures(object = SM), npcs = 100)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Determine dimensionality of the data ------------------------------------</span></p>
+<p class="p1"><span class="s1">ElbowPlot(object = SM, ndims = 100)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Clustering --------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">SM &lt;- FindNeighbors(SM, dims = 1:50)</span></p>
+<p class="p1"><span class="s1">SM &lt;- FindClusters(object = SM, resolution = 2)</span></p>
+<p class="p1"><span class="s1">SM &lt;- RunUMAP(object = SM, dims = 1:50, seed.use = 42)<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">DimPlot(object = SM, reduction = "umap", label = F) + NoLegend()<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">saveRDS(SM, file = "SM.rds")</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Finding DE features -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">SM.markers &lt;- FindAllMarkers(object = SM, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)</span></p>
+<p class="p1"><span class="s1">SM.markers %&gt;% group_by(cluster) %&gt;% top_n(n = 2, wt = avg_logFC)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">#Subset -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">syt&lt;- subset(SM, subset = `dd-Smed-v4-4222-0-1` &gt; 0)</span></p>
+<p class="p1"><span class="s1">syt&lt;-ScaleData(syt)</span></p>
+<p class="p1"><span class="s1">syt &lt;- NormalizeData(object = syt, verbose = FALSE)</span></p>
+<p class="p1"><span class="s1">syt &lt;- FindVariableFeatures(object = syt, selection.method = "vst", nfeatures = 2000)</span></p>
+<p class="p1"><span class="s1">syt &lt;- RunPCA(object = syt, features = VariableFeatures(object = syt), npcs = 100)</span></p>
+<p class="p1"><span class="s1">ElbowPlot(object = syt, ndims = 100)</span></p>
+<p class="p1"><span class="s1">syt &lt;- FindNeighbors(syt, dims = 1:25)</span></p>
+<p class="p1"><span class="s1">syt &lt;- FindClusters(object = syt, resolution = 1)</span></p>
+<p class="p1"><span class="s1">syt &lt;- RunUMAP(object = syt, dims = 1:25)</span></p>
+<p class="p1"><span class="s1">DimPlot(object = syt, reduction = "umap", label = TRUE)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">#Co-expression quantification -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">###GABAergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = `dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = `dd-Smed-v4-10192-0-1` &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Cholinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = `dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = `dd-Smed-v4-5713-0-1` &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = `dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 )))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Cholinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Cholinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Cholinergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Cholinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Cholinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Cholinergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Cholinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Cholinergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Cholinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Cholinergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Cholinergic and Glycinergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Cholinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###GABAergic and Cholinergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">###Glutamatergic and Cholinergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-10192-0-1` &gt; 1) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1) &amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">###GABAergic and Glutamatergic and Cholinergic and Glycinergic and Aminergic</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = syt, expression = (`dd-Smed-v4-12653-0-1` &gt; 1 | `dd-Smed-v4-6616-0-1` &gt; 1 | `dd-Smed-v4-11826-0-1` &gt; 1) &amp; (`dd-Smed-v4-10192-0-1` &gt; 1 ) &amp; (`dd-Smed-v4-11968-0-1` &gt; 1 | `dd-Smed-v4-6208-0-1` &gt; 1) &amp; (`dd-Smed-v4-5713-0-1` &gt; 1)&amp; (`dd-Smed-v4-19744-0-1` &gt; 1 | `dd-Smed-v4-12700-0-1` &gt; 1 | `dd-Smed-v4-21108-0-1` &gt; 1 | `dd-Smed-v4-8392-0-1` &gt; 1 | `dd-Smed-v4-16581-0-1` &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># UpSet Plot ------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">expressionInput &lt;- c(GABAergic_Neurons = 428,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 293,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons = 711,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>Glycinergic_Neurons = 371,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>Aminergic_Neurons = 201,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons` = 100,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 159,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glycinergic_Neurons` = 89,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Aminergic_Neurons` = 53,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 32,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Glycinergic_Neurons` = 63,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Aminergic_Neurons` = 45,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glycinergic_Neurons` = 147,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Aminergic_Neurons` = 45,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glycinergic_Neurons&amp;Aminergic_Neurons` = 43,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 10,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Glycinergic_Neurons` = 24,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Aminergic_Neurons` = 14,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons` = 44,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons` = 13,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 13,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons` = 8,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons` = 3,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 13,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 10,</span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">               </span></span></p>
+<p class="p1"><span class="s1">`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons` = 5,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons` = 2,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 6,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 3,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 2,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Glycinergic_Neurons&amp;Aminergic_Neurons` = 1</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("violetred2", "deepskyblue3", "purple3", "limegreen", "chocolate2"), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># UMAP Plot ------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">##Glutamatergic neurons</span></p>
+<p class="p1"><span class="s1">plot1&lt;-FeaturePlot(object = syt, features = c("dd-Smed-v4-10192-0-1"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5) + theme_void()<span class="Apple-converted-space">  </span>+ NoLegend() #Vglut</span></p>
+<p class="p1"><span class="s1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">##Cholinergic neurons</span></p>
+<p class="p1"><span class="s1">plot2&lt;-FeaturePlot(object = syt, features = c("dd-Smed-v4-11968-0-1"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5)+ theme_void()<span class="Apple-converted-space">  </span>+ NoLegend()#CHAT</span></p>
+<p class="p1"><span class="s1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">##Aminergic neurons</span></p>
+<p class="p1"><span class="s1">plot3&lt;-FeaturePlot(object = syt, features = c("dd-Smed-v4-16581-0-1"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "chocolate2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5)<span class="Apple-converted-space">  </span>+ theme_void()<span class="Apple-converted-space">  </span>+ NoLegend() #VMAT, SERT, DDC, tph, th</span></p>
+<p class="p1"><span class="s1">plot3&lt;-AugmentPlot(plot3, dpi = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">##GABAergic neurons</span></p>
+<p class="p1"><span class="s1">plot4&lt;-FeaturePlot(object = syt, features = c("dd-Smed-v4-6616-0-1"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5) + theme_void()<span class="Apple-converted-space">  </span>+ NoLegend()<span class="Apple-converted-space">  </span>#GAD</span></p>
+<p class="p1"><span class="s1">plot4&lt;-AugmentPlot(plot4, dpi = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">##Glycinergic neurons</span></p>
+<p class="p1"><span class="s1">plot5&lt;-FeaturePlot(object = syt, features = c("dd-Smed-v4-5713-0-1"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "purple3"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5) + theme_void()<span class="Apple-converted-space">  </span>+ NoLegend() #glycine transporter</span></p>
+<p class="p1"><span class="s1">plot5&lt;-AugmentPlot(plot5, dpi = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">plot_merge &lt;- CombinePlots(plots = list(plot1, plot2, plot3, plot4, plot5), ncol=3)</span></p>
+<p class="p1"><span class="s1">plot_merge</span></p>
+</body>
+</html>

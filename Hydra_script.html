@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"># Load libaries -----------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">library(dplyr)</span></p>
+<p class="p1"><span class="s1">library(Seurat)</span></p>
+<p class="p1"><span class="s1">library(ggplot2)</span></p>
+<p class="p1"><span class="s1">library(UpSetR)</span></p>
+<p class="p2"><br></p>
+<p class="p1"># Load object -----------------------------------------------------------</p>
+<p class="p1">Hydra &lt;- readRDS("~//Hydra_Seurat_Neurons.rds")</p>
+<p class="p2"><br></p>
+<p class="p1"># Update object -----------------------------------------------------------</p>
+<p class="p1">Hydra3 &lt;- UpdateSeuratObject(Hydra)</p>
+<p class="p1">Hydra3</p>
+<p class="p2"><br></p>
+<p class="p1"># Normalizing the data ----------------------------------------------------</p>
+<p class="p1">Hydra3 &lt;- NormalizeData(object = Hydra3, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p2"><br></p>
+<p class="p1"># Find variable genes -----------------------------------------------------</p>
+<p class="p1">Hydra3 &lt;- FindVariableFeatures(object = Hydra3, selection.method = "vst")</p>
+<p class="p2"><br></p>
+<p class="p1"># Scaling the data --------------------------------------------------------</p>
+<p class="p1">all.genes &lt;- rownames(x = Hydra3)</p>
+<p class="p1">Hydra3 &lt;- ScaleData(object = Hydra3, features = all.genes)</p>
+<p class="p2"><br></p>
+<p class="p1"># Dimensional reduction ---------------------------------------------------</p>
+<p class="p1">Hydra3 &lt;- RunPCA(object = Hydra3, features = VariableFeatures(object = Hydra3), npcs = 100)</p>
+<p class="p2"><br></p>
+<p class="p1"># Determine dimensionality of the data ------------------------------------</p>
+<p class="p1">ElbowPlot(object = Hydra3, ndims = 100)</p>
+<p class="p2"><br></p>
+<p class="p1"># Clustering --------------------------------------------------------------</p>
+<p class="p1">Hydra3 &lt;- FindNeighbors(Hydra3, dims = 1:25)</p>
+<p class="p1">Hydra3 &lt;- FindClusters(object = Hydra3, resolution = 2)</p>
+<p class="p1">Hydra3 &lt;- RunUMAP(object = Hydra3, dims = 1:25, seed.use = 42)<span class="Apple-converted-space"> </span></p>
+<p class="p1">DimPlot(object = Hydra3, reduction = "umap", label = F) + NoLegend() + theme_get()</p>
+<p class="p1">saveRDS(Hydra3, "Hydra3.rds")</p>
+<p class="p2"><br></p>
+<p class="p1"># Co-expression quantification -------</p>
+<p class="p1">###GABAergic</p>
+<p class="p1">length(WhichCells(object = Hydra3, expression = `t31087aep-PNPO-BOVIN` &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Cholinergic</p>
+<p class="p1">length(WhichCells(object = Hydra3, expression = `t5247aep-SC5A7-CAEEL` &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###GABAergic AND Cholinergic</p>
+<p class="p1">length(WhichCells(object = Hydra3, expression = (`t31087aep-PNPO-BOVIN` &gt; 1) &amp;<span class="Apple-converted-space">  </span>(`t5247aep-SC5A7-CAEEL` &gt; 1 )))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p1">expressionInput &lt;- c(GABAergic_Neurons = 529,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons = 381,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 20</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>)</p>
+<p class="p2"><br></p>
+<p class="p1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("deepskyblue3", "violetred2"), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="s1"># UMAP Plot ------------------------------------------------------------</span></p>
+<p class="p1">plot1&lt;-FeaturePlot(Hydra3, features = c("t31087aep-PNPO-BOVIN"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5)+ theme_void()</p>
+<p class="p1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p1">plot1</p>
+<p class="p2"><br></p>
+<p class="p1">plot2&lt;-FeaturePlot(Hydra3, features = c("t5247aep-SC5A7-CAEEL"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1.5) + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot_merge &lt;- CombinePlots(plots = list(plot1, plot2), ncol=2)</p>
+<p class="p1">plot_merge</p>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1"># Load libaries -----------------------------------------------------------</p>
+<p class="p2"><br></p>
+<p class="p1">library(dplyr)</p>
+<p class="p1">library(Seurat)</p>
+<p class="p1">library(ggplot2)</p>
+<p class="p1">library(UpSetR)</p>
+<p class="p2"><br></p>
+<p class="p1"># Load object -----------------------------------------------------------</p>
+<p class="p1">cb_neural &lt;- readRDS("~/Ciona/Sharma_et_al_2019/cb_neural.rds")</p>
+<p class="p1">cb_neural</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># Update object -----------------------------------------------------------</p>
+<p class="p1">cb_neural3 &lt;- UpdateSeuratObject(cb_neural)</p>
+<p class="p2"><br></p>
+<p class="p1"># Normalizing the data ----------------------------------------------------</p>
+<p class="p1">cb_neural3 &lt;- NormalizeData(object = cb_neural3, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p2"><br></p>
+<p class="p1"># Find variable genes -----------------------------------------------------</p>
+<p class="p1">cb_neural3 &lt;- FindVariableFeatures(object = cb_neural3, selection.method = "vst")</p>
+<p class="p2"><br></p>
+<p class="p1"># Scaling the data --------------------------------------------------------</p>
+<p class="p1">all.genes &lt;- rownames(x = cb_neural3)</p>
+<p class="p1">cb_neural3 &lt;- ScaleData(object = cb_neural3, features = all.genes)</p>
+<p class="p2"><br></p>
+<p class="p1"># Dimensional reduction ---------------------------------------------------</p>
+<p class="p1">cb_neural3 &lt;- RunPCA(object = cb_neural3, features = VariableFeatures(object = cb_neural3), npcs = 100)</p>
+<p class="p2"><br></p>
+<p class="p1"># Determine dimensionality of the data ------------------------------------</p>
+<p class="p1">ElbowPlot(object = cb_neural3, ndims = 100)</p>
+<p class="p2"><br></p>
+<p class="p1"># Clustering --------------------------------------------------------------</p>
+<p class="p1">cb_neural3 &lt;- FindNeighbors(cb_neural3, dims = 1:35)</p>
+<p class="p1">cb_neural3 &lt;- FindClusters(object = cb_neural3, resolution = 0.8)</p>
+<p class="p1">cb_neural3 &lt;- RunUMAP(object = cb_neural3, dims = 1:35, seed.use = 42)<span class="Apple-converted-space"> </span></p>
+<p class="p1">DimPlot(object = cb_neural3, reduction = "umap", label = F) + NoLegend()<span class="Apple-converted-space"> </span></p>
+<p class="p1">saveRDS(cb_neural3, "cb_neural3.rds")</p>
+<p class="p2"><br></p>
+<p class="p1"># Finding DE features -----------------------------------------------------</p>
+<p class="p1">cb_neural3.markers &lt;- FindAllMarkers(object = cb_neural3, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)</p>
+<p class="p1">cb_neural3.markers %&gt;% group_by(cluster) %&gt;% top_n(n = 2, wt = avg_logFC)</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># Feature plots -----------------------------------------------------</p>
+<p class="p1">#GABAergic neurons</p>
+<p class="p1">FeaturePlot(cb_neural3, features = c("KH2013:KH.S761.6", "KH2013:KH.C2.256"))</p>
+<p class="p1">#"KH2013:KH.S761.6": GAD1/2</p>
+<p class="p1">#KH2013:KH.C2.256: VGAT</p>
+<p class="p2"><br></p>
+<p class="p1">#Cholinergic neurons</p>
+<p class="p1">FeaturePlot(cb_neural3, features = c("KH2013:KH.C1.498"))</p>
+<p class="p1">#"KH2013:KH.C1.4981": VAChT and CHAT (OPERON)</p>
+<p class="p2"><br></p>
+<p class="p1">#Glutamatergic neurons</p>
+<p class="p1">FeaturePlot(cb_neural3, features = c("KH2013:KH.C3.324"))</p>
+<p class="p1">#"KH2013:KH.C3.324": VGlut</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># Co-expression quantification -------</p>
+<p class="p1">###GABAergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = `KH2013:KH.S761.6` &gt; 1 | `KH2013:KH.C2.256` &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Cholinergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = `KH2013:KH.C1.498` &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Glutamatergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = `KH2013:KH.C3.324` &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic AND Cholinergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = (`KH2013:KH.S761.6` &gt; 1 | `KH2013:KH.C2.256` &gt; 1) &amp;<span class="Apple-converted-space">  </span>(`KH2013:KH.C1.498` &gt; 1 )))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###GABAergic AND Glutamatergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = (`KH2013:KH.S761.6` &gt; 1 | `KH2013:KH.C2.256` &gt; 1) &amp;<span class="Apple-converted-space">  </span>(`KH2013:KH.C3.324` &gt; 1 )))<span class="Apple-converted-space"> </span></p>
+<p class="p1">###Cholinergic AND Glutamatergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = (`KH2013:KH.C1.498` &gt; 1) &amp;<span class="Apple-converted-space">  </span>(`KH2013:KH.C3.324` &gt; 1 )))<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic AND Cholinergic AND Glutamatergic</p>
+<p class="p1">length(WhichCells(object = cb_neural3, expression = (`KH2013:KH.S761.6` &gt; 1 | `KH2013:KH.C2.256` &gt; 1) &amp; (`KH2013:KH.C1.498` &gt; 1) &amp; (`KH2013:KH.C3.324` &gt; 1 )))</p>
+<p class="p2"><br></p>
+<p class="p1"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p1">expressionInput &lt;- c(GABAergic_Neurons = 495,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons = 152,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 19,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 134,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons` = 18,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glutamatergic_Neurons` = 2,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Glutamatergic_Neurons` = 2</p>
+<p class="p1">)</p>
+<p class="p2"><br></p>
+<p class="p1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("deepskyblue3", "violetred2", "limegreen"), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p2"><br></p>
+<p class="p1"># UMAP Plot ------------------------------------------------------------</p>
+<p class="p1">#GABAergic neurons</p>
+<p class="p1">plot1&lt;-FeaturePlot(cb_neural3, features = c("KH2013:KH.S761.6"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">#Cholinergic neurons</p>
+<p class="p1">plot2&lt;-FeaturePlot(cb_neural3, features = c("KH2013:KH.C1.498"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">#Glutamatergic neurons</p>
+<p class="p1">plot3&lt;-FeaturePlot(cb_neural3, features = c("KH2013:KH.C3.324"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90") + theme_void() + NoLegend()</p>
+<p class="p1">plot3&lt;-AugmentPlot(plot3, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plotA &lt;- CombinePlots(plots = list(plot1, plot2, plot3), ncol=2)</p>
+<p class="p1">plotA</p>
+</body>
+</html>

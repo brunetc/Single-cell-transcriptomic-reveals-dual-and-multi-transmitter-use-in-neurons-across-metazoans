@@ -1,0 +1,211 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><br></p>
+<p class="p2"><span class="s1"># Load libaries -----------------------------------------------------------</span></p>
+<p class="p2"><span class="s1">library(dplyr)</span></p>
+<p class="p2"><span class="s1">library(Seurat)</span></p>
+<p class="p2"><span class="s1">library(ggplot2)</span></p>
+<p class="p2"><span class="s1">library(UpSetR)</span></p>
+<p class="p1"><br></p>
+<p class="p2">##ADULT</p>
+<p class="p2"># Load libaries -----------------------------------------------------------</p>
+<p class="p2">adult &lt;- Read10X(“~/GSE107451_DGRP-551_w1118_WholeBrain_57k_0d_1d_3d_6d_9d_15d_30d_50d_10X_DGEM_MEX.mtx.tsv")</p>
+<p class="p1"><br></p>
+<p class="p2"># Creat seurat object -----------------------------------------------------------</p>
+<p class="p2">adult &lt;- CreateSeuratObject(counts = adult, project="AdultBrain", min.cells = 1, min.features = 200)</p>
+<p class="p1"><br></p>
+<p class="p2"># Subset<span class="Apple-converted-space">  </span>-----------------------------------------------------------</p>
+<p class="p2">adult &lt;- subset(x = adult, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 4500 &amp; percent.mt &lt; 15)</p>
+<p class="p1"><br></p>
+<p class="p2"># Normalizing the data ----------------------------------------------------</p>
+<p class="p2">adult &lt;- NormalizeData(object = adult, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1"><br></p>
+<p class="p2"># Find variable genes -----------------------------------------------------</p>
+<p class="p2">adult &lt;- FindVariableFeatures(object = adult, selection.method = "vst")</p>
+<p class="p1"><br></p>
+<p class="p2"># Scaling the data --------------------------------------------------------</p>
+<p class="p2">adult &lt;- ScaleData(object = adult)</p>
+<p class="p1"><br></p>
+<p class="p2"># Dimensional reduction ---------------------------------------------------</p>
+<p class="p2">adult &lt;- RunPCA(object = adult, features = VariableFeatures(object = adult), npcs = 200)</p>
+<p class="p1"><br></p>
+<p class="p2"><span class="s1"># Determine dimensionality of the data ------------------------------------</span></p>
+<p class="p2">ElbowPlot(object = adult, ndims = 200)</p>
+<p class="p1"><br></p>
+<p class="p2"># Clustering --------------------------------------------------------------</p>
+<p class="p2">adult &lt;- FindNeighbors(adult, dims = 1:30)</p>
+<p class="p2">adult &lt;- FindClusters(object = adult, resolution = 4)</p>
+<p class="p2">adult &lt;- RunUMAP(object = adult, dims = 1:30, seed.use = 42)<span class="Apple-converted-space"> </span></p>
+<p class="p2">DimPlot(object = adult, reduction = "umap", label = TRUE) + NoLegend()</p>
+<p class="p2">FeaturePlot(adult, features = c("VGlut", "Gad1", "Vmat", "VAChT"))</p>
+<p class="p2">saveRDS(adult, "adult.rds")</p>
+<p class="p1"><br></p>
+<p class="p2"># Subset Neurons --------------------------------------------------------------</p>
+<p class="p2">neurons &lt;- subset(adult, subset = nSyb &gt; 1 | elav &gt; 1 | Syt1 &gt; 1 )</p>
+<p class="p2">neurons &lt;- ScaleData(neurons)</p>
+<p class="p2">neurons &lt;- NormalizeData(object = neurons, verbose = FALSE)</p>
+<p class="p2">neurons &lt;- FindVariableFeatures(object = neurons, selection.method = "vst", nfeatures = 2000)</p>
+<p class="p2">neurons &lt;- RunPCA(object = neurons, features = VariableFeatures(object = neurons), npcs = 100)</p>
+<p class="p2">ElbowPlot(object = neurons, ndims = 100)</p>
+<p class="p2">neurons &lt;- FindNeighbors(neurons, dims = 1:40)</p>
+<p class="p2">neurons &lt;- FindClusters(object = neurons, resolution = 4)</p>
+<p class="p2">neurons &lt;- RunUMAP(object = neurons, dims = 1:40)</p>
+<p class="p2">DimPlot(object = neurons, reduction = "umap", label = F)</p>
+<p class="p2">FeaturePlot(neurons, features = c("VGlut", "Gad1", "Vmat", "VAChT"))</p>
+<p class="p1"><br></p>
+<p class="p1"><br></p>
+<p class="p2"># Co-expression quantification --------------------------------------------------------------</p>
+<p class="p2">###GABAergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Glutamatergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = VGlut &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Cholinergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = VAChT &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2">###GABAergic and Glutamatergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; VGlut &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###GABAergic and Cholinergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; VAChT &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###GABAergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Glutamatergic and Cholinergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = VGlut &gt; 1 &amp; VAChT &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Glutamatergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = VGlut &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Cholinergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2">###GABAergic and Glutamatergic and Cholinergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; VGlut &gt; 1 &amp; VAChT &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###GABAergic and Glutamatergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; VGlut &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###GABAergic and Cholinergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">###Glutamatergic and Cholinergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = VGlut &gt; 1 &amp; VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2">###GABAergic and Glutamatergic and Cholinergic and Aminergic</p>
+<p class="p2">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 &amp; VGlut &gt; 1 &amp; VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p2">expressionInput &lt;- c(GABAergic_Neurons = 8699,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 18316,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons= 31087,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>Aminergic_Neurons=1828, <span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons` = 1825,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 2659,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Aminergic_Neurons` = 250,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 6094,</p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Aminergic_Neurons` = 650,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Aminergic_Neurons` = 811,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons`= 841,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Aminergic_Neurons`= 104,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 263,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 125,</p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 65)</p>
+<p class="p1"><br></p>
+<p class="p2">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("violetred2","limegreen", "deepskyblue3",<span class="Apple-converted-space">  </span>"chocolate2"), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p1"><br></p>
+<p class="p2"><span class="s1"># UMAP Plot ------------------------------------------------------------</span></p>
+<p class="p2">plot1&lt;-FeaturePlot(neurons, features = c("Gad1"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p2">plot2&lt;-FeaturePlot(neurons, features = c("VGlut"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p2">plot3&lt;-FeaturePlot(neurons, features = c("VAChT"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot3&lt;-AugmentPlot(plot3, dpi = 200)</p>
+<p class="p2">plot4&lt;-FeaturePlot(neurons, features = c("Vmat"), cols = c("lightgrey", "chocolate2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot4&lt;-AugmentPlot(plot4, dpi = 200)</p>
+<p class="p1"><br></p>
+<p class="p1"><br></p>
+<p class="p2">plot_merge &lt;- CombinePlots(plots = list(plot1, plot2, plot3, plot4), ncol=2)</p>
+<p class="p2">plot_merge</p>
+<p class="p1"><br></p>
+<p class="p2">## LARVA</p>
+<p class="p1"><br></p>
+<p class="p2"># Load file <span class="s1">------------------------------------------------------------</span></p>
+<p class="p2">merge3 &lt;- loadRDS (“merge3.rds”)</p>
+<p class="p1"><br></p>
+<p class="p2"># Subset <span class="s1">------------------------------------------------------------</span></p>
+<p class="p2">neurotransmitters &lt;- subset(merge3, subset = elav &gt; 1 | Syt1 &gt; 1 | nSyb &gt; 1)</p>
+<p class="p2">neurotransmitters &lt;- NormalizeData(object = neurotransmitters, verbose = FALSE)</p>
+<p class="p2">neurotransmitters &lt;- FindVariableFeatures(object = neurotransmitters, selection.method = "vst", nfeatures = 2000)</p>
+<p class="p2">neurotransmitters &lt;- ScaleData(neurotransmitters)</p>
+<p class="p2">neurotransmitters &lt;- RunPCA(object = neurotransmitters, features = VariableFeatures(object = neurotransmitters), npcs = 100)</p>
+<p class="p2">ElbowPlot(object = neurotransmitters, ndims = 100)</p>
+<p class="p2">neurotransmitters &lt;- FindNeighbors(neurotransmitters, dims = 1:38)</p>
+<p class="p2">neurotransmitters &lt;- FindClusters(object = neurotransmitters, resolution = 1)</p>
+<p class="p2">neurotransmitters &lt;- RunUMAP(object = neurotransmitters, dims = 1:38)</p>
+<p class="p1"><br></p>
+<p class="p2"><span class="s1"># Co-expression quantification ------------------------------------------------------------</span></p>
+<p class="p2">#1</p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1))</p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VAChT &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = Gad1 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2">#2</p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; VAChT &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; Gad1 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VAChT &gt; 1 &amp; Gad1 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = Gad1 &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2">#3</p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VAChT &gt; 1 &amp; Gad1 &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; Gad1 &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; VAChT &gt; 1 &amp; Gad1 &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p2">#4</p>
+<p class="p2">length(WhichCells(object = neurotransmitters, expression = VGlut &gt; 1 &amp; Gad1 &gt; 1 &amp; VAChT &gt; 1 &amp; Vmat &gt; 1))<span class="Apple-converted-space"> </span></p>
+<p class="p1"><br></p>
+<p class="p1"><br></p>
+<p class="p2"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p2">expressionInput &lt;- c(Cholinergic_Neurons = 2923,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 2921,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>GABAergic_Neurons = 1539,</p>
+<p class="p2"><span class="Apple-converted-space">                     </span>Aminergic_Neurons= 1342,</p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glutamatergic_Neurons` = 994,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;GABAergic_Neurons` = 361,</p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Aminergic_Neurons` = 437,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;GABAergic_Neurons` = 612,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Aminergic_Neurons` = 641,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Aminergic_Neurons`= 301,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glutamatergic_Neurons&amp;GABAergic_Neurons`= 163,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Glutamatergic_Neurons&amp;Aminergic_Neurons`= 188,</p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;GABAergic_Neurons&amp;Aminergic_Neurons`= 89,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;GABAergic_Neurons&amp;Aminergic_Neurons`= 153,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;GABAergic_Neurons&amp;Aminergic_Neurons`= 45 )</p>
+<p class="p1"><br></p>
+<p class="p2">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("limegreen", "violetred2", "deepskyblue3" , <span class="Apple-converted-space">  </span>"chocolate2"), set_size.show = T, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p1"><br></p>
+<p class="p2"><span class="s1"># UMAP Plot ------------------------------------------------------------</span></p>
+<p class="p2">plot1&lt;-FeaturePlot(neurotransmitters, features = c("Gad1"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p2">plot2&lt;-FeaturePlot(neurotransmitters, features = c("VGlut"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p2">plot3&lt;-FeaturePlot(neurotransmitters, features = c("VAChT"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot3&lt;-AugmentPlot(plot3, dpi = 200)</p>
+<p class="p2">plot4&lt;-FeaturePlot(neurotransmitters, features = c("Vmat"), cols = c("lightgrey", "chocolate2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p2">plot4&lt;-AugmentPlot(plot4, dpi = 200)</p>
+<p class="p1"><br></p>
+<p class="p2">plot_merge &lt;- CombinePlots(plots = list(plot1, plot2, plot3, plot4), ncol=2)</p>
+<p class="p2">plot_merge</p>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"># Load libaries -----------------------------------------------------------</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">library(dplyr)</span></p>
+<p class="p1"><span class="s1">library(Seurat)</span></p>
+<p class="p1"><span class="s1">library(ggplot2)</span></p>
+<p class="p1"><span class="s1">library(UpSetR)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Download and Load sample ----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">download.file("http://waterston.gs.washington.edu/sci_RNA_seq_gene_count_data/Cao_et_al_2017_vignette.RData", destfile = "Cao_et_al_2017_vignette.RData")</span></p>
+<p class="p1"><span class="s1">load("Cao_et_al_2017_vignette.RData")</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Set up SEURAT object ----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">CE &lt;- CreateSeuratObject(counts = norm.expr, project="CE", min.cells = 1, min.features = 200)</span></p>
+<p class="p1"><span class="s1">CE</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Normalizing the data ----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">CE &lt;- NormalizeData(object = CE, normalization.method = "LogNormalize", scale.factor = 10000)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Find variable genes -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">CE &lt;- FindVariableFeatures(object = CE, selection.method = "vst")</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Scaling the data --------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">all.genes &lt;- rownames(x = CE)</span></p>
+<p class="p1"><span class="s1">CE &lt;- ScaleData(object = CE, features = all.genes)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Dimensional reduction ---------------------------------------------------</span></p>
+<p class="p1"><span class="s1">CE &lt;- RunPCA(object = CE, features = VariableFeatures(object = CE), npcs = 100)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Determine dimensionality of the data ------------------------------------</span></p>
+<p class="p1"><span class="s1">ElbowPlot(object = CE, ndims = 100)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Clustering --------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">CE &lt;- FindNeighbors(CE, dims = 1:50)</span></p>
+<p class="p1"><span class="s1">CE &lt;- FindClusters(object = CE, resolution = 2)</span></p>
+<p class="p1"><span class="s1">CE &lt;- RunUMAP(object = CE, dims = 1:50, seed.use = 42)<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">DimPlot(object = CE, reduction = "umap", label = F) + NoLegend()</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Finding DE features -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">CE.markers &lt;- FindAllMarkers(object = CE, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)</span></p>
+<p class="p1"><span class="s1">CE.markers %&gt;% group_by(cluster) %&gt;% top_n(n = 2, wt = avg_logFC)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Neurons-----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- CreateSeuratObject(counts = neuron.type.expr.info[["norm.expr"]], project="neu", min.cells = 1, min.features = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Normalizing the data ----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- NormalizeData(object = neu2, normalization.method = "LogNormalize", scale.factor = 10000)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Find variable genes -----------------------------------------------------</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- FindVariableFeatures(object = neu2, selection.method = "vst")</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Scaling the data --------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">all.genes &lt;- rownames(x = neu2)</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- ScaleData(object = neu2, features = all.genes)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Dimensional reduction ---------------------------------------------------</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- RunPCA(object = neu2, features = VariableFeatures(object = neu2), npcs = 100)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Determine dimensionality of the data ------------------------------------</span></p>
+<p class="p1"><span class="s1">ElbowPlot(object = neu2, ndims = 100)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Clustering --------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- FindNeighbors(neu2, dims = 1:40)</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- FindClusters(object = neu2, resolution = 0.1)</span></p>
+<p class="p1"><span class="s1">neu2 &lt;- RunUMAP(object = neu2, dims = 1:40, seed.use = 42)<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">DimPlot(object = neu2, reduction = "umap", label = F) + NoLegend()</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># Neuron Quantification --------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Glutamatergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = WBGene00001135 &gt; 1))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Cholinergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##GABAergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Glutamatergic and Cholinergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Glutamatergic and GABAergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1)))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Glutamatergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Cholinergic and GABAergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1) &amp; (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##Cholinergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>##GABAergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">##Glutamatergic and Cholinergic and GABAergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1) &amp; (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">##Glutamatergic and Cholinergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">##Glutamatergic and GABAergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">##Cholinergic and GABAergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1) &amp; (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">##Glutamatergic and Cholinergic and GABAergic and Aminergic neurons</span></p>
+<p class="p1"><span class="s1">length(WhichCells(object = neu2, expression = (WBGene00001135 &gt; 1) &amp; (WBGene00000481 &gt; 1 | WBGene00006756 &gt;1 | WBGene00000501 &gt; 1) &amp; (WBGene00006762 &gt; 1 | WBGene00006783 &gt;1 | WBGene00004910 &gt; 1) &amp; (WBGene00006600 &gt; 1 | WBGene00000239 &gt; 1 | WBGene00000295 &gt; 1 | WBGene00003387 &gt; 1 | WBGene00000296 &gt; 1 | WBGene00000934 &gt; 1 | WBGene00006562 &gt; 1 | WBGene00006541 &gt; 1)))<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># UpSet PLOT --------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">expressionInput &lt;- c(Glutamatergic_Neurons = 191,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons = 471,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>GABAergic_Neurons = 182,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>Aminergic_Neurons = 88,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 5,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;GABAergic_Neurons` = 5,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Aminergic_Neurons` = 11,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;GABAergic_Neurons` = 21,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Aminergic_Neurons` = 21,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Aminergic_Neurons`= 4,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;GABAergic_Neurons`= 0,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 0,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;GABAergic_Neurons&amp;Aminergic_Neurons`= 0,<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;GABAergic_Neurons&amp;Aminergic_Neurons`= 1,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;GABAergic_Neurons&amp;Aminergic_Neurons`= 0 )</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("violetred2", "deepskyblue3","limegreen",<span class="Apple-converted-space">  </span>"chocolate2"), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"># UMAP Plot ------------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">##Glutamatergic neurons</span></p>
+<p class="p1"><span class="s1">plot1&lt;-FeaturePlot(object = neu2, features = c("WBGene00001135"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 2) + theme_void()+ NoLegend() <span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</span></p>
+<p class="p1"><span class="s1">##Cholinergic neurons</span></p>
+<p class="p1"><span class="s1">plot2&lt;-FeaturePlot(object = neu2, features = c("WBGene00006756"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 2) + theme_void()<span class="Apple-converted-space">  </span>+ NoLegend()<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</span></p>
+<p class="p1"><span class="s1">##GABAergic neurons</span></p>
+<p class="p1"><span class="s1">plot3&lt;-FeaturePlot(object = neu2, features = c("WBGene00006762"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 2) + theme_void() + NoLegend()<span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">plot3&lt;-AugmentPlot(plot3, dpi = 200)</span></p>
+<p class="p1"><span class="s1">##Aminergic neurons</span></p>
+<p class="p1"><span class="s1">plot4&lt;-FeaturePlot(object = neu2, features = c("WBGene00000295"), reduction = "umap",<span class="Apple-converted-space">  </span>label = F, cols = c("lightgrey", "chocolate2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 2) + theme_void() + NoLegend() <span class="Apple-converted-space"> </span></span></p>
+<p class="p1"><span class="s1">plot4&lt;-AugmentPlot(plot4, dpi = 200)</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">plotA &lt;- CombinePlots(plots = list(plot2, plot1, plot3, plot4), ncol=2)</span></p>
+<p class="p1"><span class="s1">plotA</span></p>
+</body>
+</html>
