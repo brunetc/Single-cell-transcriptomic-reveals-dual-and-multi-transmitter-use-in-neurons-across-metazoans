@@ -1,0 +1,538 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1671.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+    span.s1 {font-kerning: none}
+    span.Apple-tab-span {white-space:pre}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"># Load libaries -----------------------------------------------------------</span></p>
+<p class="p1"><span class="s1">library(dplyr)</span></p>
+<p class="p1"><span class="s1">library(Seurat)</span></p>
+<p class="p1"><span class="s1">library(ggplot2)</span></p>
+<p class="p1"><span class="s1">library(UpSetR)</span></p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># Reading files ----</p>
+<p class="p1">Young1.data &lt;- read.table(“/Mouse/Ximerakis_et_al/10X/GSM3722100_YX1L_10X.txt")</p>
+<p class="p1">Young2.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722101_YX2L_10X.txt")</p>
+<p class="p1">Young3.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722102_YX3R_10X.txt")</p>
+<p class="p1">Young4.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722103_YX4R_10X.txt")</p>
+<p class="p1">Young5.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722104_YX5R_10X.txt")</p>
+<p class="p1">Young6.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722105_YX6L_10X.txt")</p>
+<p class="p1">Young7.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722106_YX7R_10X.txt")</p>
+<p class="p1">Young8.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722107_YX8L_10X.txt")</p>
+<p class="p2"><br></p>
+<p class="p1">Old1.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722108_OX1X_10X.txt.gz")</p>
+<p class="p1">Old2.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722109_OX2X_10X.txt.gz")</p>
+<p class="p1">Old3.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722110_OX3X_10X.txt.gz")</p>
+<p class="p1">Old4.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722111_OX4X_10X.txt.gz")</p>
+<p class="p1">Old5.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722112_OX5X_10X.txt.gz")</p>
+<p class="p1">Old6.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722113_OX6X_10X.txt.gz")</p>
+<p class="p1">Old7.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722114_OX7X_10X.txt.gz")</p>
+<p class="p1">Old8.data &lt;- read.table("/Mouse/Ximerakis_et_al/10X/GSM3722115_OX8X_10X.txt.gz")</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young1 object -----------------------------------------------------------</p>
+<p class="p1">Young1 &lt;- CreateSeuratObject(counts = Young1.data, project = "Young1", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young1</p>
+<p class="p1">Young1$stim &lt;- "YOUNG-1"</p>
+<p class="p1">Young1[["percent.mt.Young1"]] &lt;- PercentageFeatureSet(object = Young1, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young1, feature1 = "nCount_RNA", feature2 = "percent.mt.Young1")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young1 &lt;- subset(Young1, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young1 &lt; 5)</p>
+<p class="p1">Young1 &lt;- NormalizeData(Young1, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young1 &lt;- FindVariableFeatures(Young1, selection.method = "vst")</p>
+<p class="p1">Young1<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young1 &lt;- rownames(x = Young1)</p>
+<p class="p1">Young1 &lt;- ScaleData(object = Young1, features = all.genes.Young1)</p>
+<p class="p1">Young1 &lt;- RunPCA(object = Young1, features = VariableFeatures(object = Young1), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young1, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young2 object -----------------------------------------------------------</p>
+<p class="p1">Young2 &lt;- CreateSeuratObject(counts = Young2.data, project = "Young2", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young2</p>
+<p class="p1">Young2$stim &lt;- "YOUNG-2"</p>
+<p class="p1">Young2[["percent.mt.Young2"]] &lt;- PercentageFeatureSet(object = Young2, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young2, feature1 = "nCount_RNA", feature2 = "percent.mt.Young2")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young2 &lt;- subset(Young2, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young2 &lt; 5)</p>
+<p class="p1">Young2 &lt;- NormalizeData(Young2, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young2 &lt;- FindVariableFeatures(Young2, selection.method = "vst")</p>
+<p class="p1">Young2<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young2 &lt;- rownames(x = Young2)</p>
+<p class="p1">Young2 &lt;- ScaleData(object = Young2, features = all.genes.Young2)</p>
+<p class="p1">Young2 &lt;- RunPCA(object = Young2, features = VariableFeatures(object = Young2), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young2, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young3 object -----------------------------------------------------------</p>
+<p class="p1">Young3 &lt;- CreateSeuratObject(counts = Young3.data, project = "Young3", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young3</p>
+<p class="p1">Young3$stim &lt;- "YOUNG-3"</p>
+<p class="p1">Young3[["percent.mt.Young3"]] &lt;- PercentageFeatureSet(object = Young3, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young3, feature1 = "nCount_RNA", feature2 = "percent.mt.Young3")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young3, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young3 &lt;- subset(Young3, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young3 &lt; 5)</p>
+<p class="p1">Young3 &lt;- NormalizeData(Young3, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young3 &lt;- FindVariableFeatures(Young3, selection.method = "vst")</p>
+<p class="p1">Young3<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young3 &lt;- rownames(x = Young3)</p>
+<p class="p1">Young3 &lt;- ScaleData(object = Young3, features = all.genes.Young3)</p>
+<p class="p1">Young3 &lt;- RunPCA(object = Young3, features = VariableFeatures(object = Young3), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young3, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young4 object -----------------------------------------------------------</p>
+<p class="p1">Young4 &lt;- CreateSeuratObject(counts = Young4.data, project = "Young4", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young4</p>
+<p class="p1">Young4$stim &lt;- "YOUNG-4"</p>
+<p class="p1">Young4[["percent.mt.Young4"]] &lt;- PercentageFeatureSet(object = Young4, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young4, feature1 = "nCount_RNA", feature2 = "percent.mt.Young4")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young4, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young4 &lt;- subset(Young4, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young4 &lt; 5)</p>
+<p class="p1">Young4 &lt;- NormalizeData(Young4, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young4 &lt;- FindVariableFeatures(Young4, selection.method = "vst")</p>
+<p class="p1">Young4<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young4 &lt;- rownames(x = Young4)</p>
+<p class="p1">Young4 &lt;- ScaleData(object = Young4, features = all.genes.Young4)</p>
+<p class="p1">Young4 &lt;- RunPCA(object = Young4, features = VariableFeatures(object = Young4), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young4, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young5 object -----------------------------------------------------------</p>
+<p class="p1">Young5 &lt;- CreateSeuratObject(counts = Young5.data, project = "Young5", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young5</p>
+<p class="p1">Young5$stim &lt;- "YOUNG-5"</p>
+<p class="p1">Young5[["percent.mt.Young5"]] &lt;- PercentageFeatureSet(object = Young5, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young5, feature1 = "nCount_RNA", feature2 = "percent.mt.Young5")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young5, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young5 &lt;- subset(Young5, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young5 &lt; 5)</p>
+<p class="p1">Young5 &lt;- NormalizeData(Young5, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young5 &lt;- FindVariableFeatures(Young5, selection.method = "vst")</p>
+<p class="p1">Young5<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young5 &lt;- rownames(x = Young5)</p>
+<p class="p1">Young5 &lt;- ScaleData(object = Young5, features = all.genes.Young5)</p>
+<p class="p1">Young5 &lt;- RunPCA(object = Young5, features = VariableFeatures(object = Young5), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young5, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young6 object -----------------------------------------------------------</p>
+<p class="p1">Young6 &lt;- CreateSeuratObject(counts = Young6.data, project = "Young6", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young6</p>
+<p class="p1">Young6$stim &lt;- "YOUNG-6"</p>
+<p class="p1">Young6[["percent.mt.Young6"]] &lt;- PercentageFeatureSet(object = Young6, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young6, feature1 = "nCount_RNA", feature2 = "percent.mt.Young6")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young6, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young6 &lt;- subset(Young6, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young6 &lt; 5)</p>
+<p class="p1">Young6 &lt;- NormalizeData(Young6, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young6 &lt;- FindVariableFeatures(Young6, selection.method = "vst")</p>
+<p class="p1">Young6<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young6 &lt;- rownames(x = Young6)</p>
+<p class="p1">Young6 &lt;- ScaleData(object = Young6, features = all.genes.Young6)</p>
+<p class="p1">Young6 &lt;- RunPCA(object = Young6, features = VariableFeatures(object = Young6), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young6, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young7 object -----------------------------------------------------------</p>
+<p class="p1">Young7 &lt;- CreateSeuratObject(counts = Young7.data, project = "Young7", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young7</p>
+<p class="p1">Young7$stim &lt;- "YOUNG-7"</p>
+<p class="p1">Young7[["percent.mt.Young7"]] &lt;- PercentageFeatureSet(object = Young7, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young7, feature1 = "nCount_RNA", feature2 = "percent.mt.Young7")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young7, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young7 &lt;- subset(Young7, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young7 &lt; 5)</p>
+<p class="p1">Young7 &lt;- NormalizeData(Young7, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young7 &lt;- FindVariableFeatures(Young7, selection.method = "vst")</p>
+<p class="p1">Young7<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young7 &lt;- rownames(x = Young7)</p>
+<p class="p1">Young7 &lt;- ScaleData(object = Young7, features = all.genes.Young7)</p>
+<p class="p1">Young7 &lt;- RunPCA(object = Young7, features = VariableFeatures(object = Young7), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young7, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Young8 object -----------------------------------------------------------</p>
+<p class="p1">Young8 &lt;- CreateSeuratObject(counts = Young8.data, project = "Young8", min.cells = 1, min.features = 200)</p>
+<p class="p1">Young8</p>
+<p class="p1">Young8$stim &lt;- "YOUNG-8"</p>
+<p class="p1">Young8[["percent.mt.Young8"]] &lt;- PercentageFeatureSet(object = Young8, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Young8, feature1 = "nCount_RNA", feature2 = "percent.mt.Young8")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Young8, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Young8 &lt;- subset(Young8, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Young8 &lt; 5)</p>
+<p class="p1">Young8 &lt;- NormalizeData(Young8, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Young8 &lt;- FindVariableFeatures(Young8, selection.method = "vst")</p>
+<p class="p1">Young8<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Young8 &lt;- rownames(x = Young8)</p>
+<p class="p1">Young8 &lt;- ScaleData(object = Young8, features = all.genes.Young8)</p>
+<p class="p1">Young8 &lt;- RunPCA(object = Young8, features = VariableFeatures(object = Young8), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Young8, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old1 object -----------------------------------------------------------</p>
+<p class="p1">Old1 &lt;- CreateSeuratObject(counts = Old1.data, project = "Old1", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old1</p>
+<p class="p1">Old1$stim &lt;- "OLD-1"</p>
+<p class="p1">Old1[["percent.mt.Old1"]] &lt;- PercentageFeatureSet(object = Old1, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Old1, feature1 = "nCount_RNA", feature2 = "percent.mt.Old1")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Old1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Old1 &lt;- subset(Old1, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Old1 &lt; 5)</p>
+<p class="p1">Old1 &lt;- NormalizeData(Old1, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old1 &lt;- FindVariableFeatures(Old1, selection.method = "vst")</p>
+<p class="p1">Old1<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old1 &lt;- rownames(x = Old1)</p>
+<p class="p1">Old1 &lt;- ScaleData(object = Old1, features = all.genes.Old1)</p>
+<p class="p1">Old1 &lt;- RunPCA(object = Old1, features = VariableFeatures(object = Old1), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old1, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old2 object -----------------------------------------------------------</p>
+<p class="p1">Old2 &lt;- CreateSeuratObject(counts = Old2.data, project = "Old2", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old2</p>
+<p class="p1">Old2$stim &lt;- "OLD-2"</p>
+<p class="p1">Old2[["percent.mt.Old2"]] &lt;- PercentageFeatureSet(object = Old2, pattern = "^Mt-")</p>
+<p class="p1">plot1 &lt;- FeatureScatter(object = Old2, feature1 = "nCount_RNA", feature2 = "percent.mt.Old2")</p>
+<p class="p1">plot2 &lt;- FeatureScatter(object = Old2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")</p>
+<p class="p1">plot1 + plot2</p>
+<p class="p1">#Old1 &lt;- subset(Old1, subset = nFeature_RNA &gt; 200 &amp; nFeature_RNA &lt; 2000 &amp; percent.mt.Old1 &lt; 5)</p>
+<p class="p1">Old2 &lt;- NormalizeData(Old2, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old2 &lt;- FindVariableFeatures(Old2, selection.method = "vst")</p>
+<p class="p1">Old2<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old2 &lt;- rownames(x = Old2)</p>
+<p class="p1">Old2 &lt;- ScaleData(object = Old2, features = all.genes.Old2)</p>
+<p class="p1">Old2 &lt;- RunPCA(object = Old2, features = VariableFeatures(object = Old2), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old2, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old3 object -----------------------------------------------------------</p>
+<p class="p1">Old3 &lt;- CreateSeuratObject(counts = Old3.data, project = "Old3", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old3</p>
+<p class="p1">Old3$stim &lt;- "OLD-3"</p>
+<p class="p1">Old3 &lt;- NormalizeData(Old3, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old3 &lt;- FindVariableFeatures(Old3, selection.method = "vst")</p>
+<p class="p1">Old3<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old3 &lt;- rownames(x = Old3)</p>
+<p class="p1">Old3 &lt;- ScaleData(object = Old3, features = all.genes.Old3)</p>
+<p class="p1">Old3 &lt;- RunPCA(object = Old3, features = VariableFeatures(object = Old3), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old3, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old4 object -----------------------------------------------------------</p>
+<p class="p1">Old4 &lt;- CreateSeuratObject(counts = Old4.data, project = "Old4", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old4</p>
+<p class="p1">Old4$stim &lt;- "OLD-4"</p>
+<p class="p1">Old4 &lt;- NormalizeData(Old4, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old4 &lt;- FindVariableFeatures(Old4, selection.method = "vst")</p>
+<p class="p1">Old4<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old4 &lt;- rownames(x = Old4)</p>
+<p class="p1">Old4 &lt;- ScaleData(object = Old4, features = all.genes.Old4)</p>
+<p class="p1">Old4 &lt;- RunPCA(object = Old4, features = VariableFeatures(object = Old4), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old4, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old5 object -----------------------------------------------------------</p>
+<p class="p1">Old5 &lt;- CreateSeuratObject(counts = Old5.data, project = "Old5", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old5</p>
+<p class="p1">Old5$stim &lt;- "OLD-5"</p>
+<p class="p1">Old5 &lt;- NormalizeData(Old5, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old5 &lt;- FindVariableFeatures(Old5, selection.method = "vst")</p>
+<p class="p1">Old5<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old5 &lt;- rownames(x = Old5)</p>
+<p class="p1">Old5 &lt;- ScaleData(object = Old5, features = all.genes.Old5)</p>
+<p class="p1">Old5 &lt;- RunPCA(object = Old5, features = VariableFeatures(object = Old5), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old5, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old6 object -----------------------------------------------------------</p>
+<p class="p1">Old6 &lt;- CreateSeuratObject(counts = Old6.data, project = "Old6", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old6</p>
+<p class="p1">Old6$stim &lt;- "OLD-6"</p>
+<p class="p1">Old6 &lt;- NormalizeData(Old6, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old6 &lt;- FindVariableFeatures(Old6, selection.method = "vst")</p>
+<p class="p1">Old6<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old6 &lt;- rownames(x = Old6)</p>
+<p class="p1">Old6 &lt;- ScaleData(object = Old6, features = all.genes.Old6)</p>
+<p class="p1">Old6 &lt;- RunPCA(object = Old6, features = VariableFeatures(object = Old6), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old6, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old7 object -----------------------------------------------------------</p>
+<p class="p1">Old7 &lt;- CreateSeuratObject(counts = Old7.data, project = "Old7", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old7</p>
+<p class="p1">Old7$stim &lt;- "OLD-7"</p>
+<p class="p1">Old7 &lt;- NormalizeData(Old7, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old7 &lt;- FindVariableFeatures(Old7, selection.method = "vst")</p>
+<p class="p1">Old7<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old7 &lt;- rownames(x = Old7)</p>
+<p class="p1">Old7 &lt;- ScaleData(object = Old7, features = all.genes.Old7)</p>
+<p class="p1">Old7 &lt;- RunPCA(object = Old7, features = VariableFeatures(object = Old7), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old7, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Set up Old8 object -----------------------------------------------------------</p>
+<p class="p1">Old8 &lt;- CreateSeuratObject(counts = Old8.data, project = "Old8", min.cells = 1, min.features = 200)</p>
+<p class="p1">Old8</p>
+<p class="p1">Old8$stim &lt;- "OLD-8"</p>
+<p class="p1">Old8 &lt;- NormalizeData(Old8, verbose = FALSE, normalization.method = "LogNormalize", scale.factor = 10000)</p>
+<p class="p1">Old8 &lt;- FindVariableFeatures(Old8, selection.method = "vst")</p>
+<p class="p1">Old8<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1">all.genes.Old8 &lt;- rownames(x = Old8)</p>
+<p class="p1">Old8 &lt;- ScaleData(object = Old8, features = all.genes.Old8)</p>
+<p class="p1">Old8 &lt;- RunPCA(object = Old8, features = VariableFeatures(object = Old8), npcs = 40)</p>
+<p class="p1">ElbowPlot(object = Old8, ndims = 40)</p>
+<p class="p2"><br></p>
+<p class="p1"># Perform integration -----------------------------------------------------------</p>
+<p class="p1">young.anchors&lt;- FindIntegrationAnchors(object.list = list(Young1, Young2, Young3, Young4, Young5, Young6, Young7, Young8), dims = 1:20)</p>
+<p class="p1">young.combined &lt;- IntegrateData(anchorset = young.anchors, dims = 1:20, verbose = T)</p>
+<p class="p2"><br></p>
+<p class="p1">old.anchors &lt;- FindIntegrationAnchors(object.list = list(Old1, Old2, Old3, Old4, Old5, Old6, Old7, Old8), dims = 1:20)</p>
+<p class="p1">old.combined &lt;- IntegrateData(anchorset = old.anchors, dims = 1:20, verbose = T)</p>
+<p class="p2"><br></p>
+<p class="p1">DefaultAssay(young.combined) &lt;- "integrated"</p>
+<p class="p1">DefaultAssay(old.combined) &lt;- "integrated"</p>
+<p class="p2"><br></p>
+<p class="p1"># Visualization and clustering -----------------------------------------------------------</p>
+<p class="p1">all.genes &lt;- rownames(x = young.combined)</p>
+<p class="p1">young.combined &lt;- ScaleData(young.combined , verbose = T)</p>
+<p class="p1">young.combined<span class="Apple-converted-space">  </span>&lt;- RunPCA(young.combined , npcs = 100, verbose = T)</p>
+<p class="p1">ElbowPlot(object = young.combined, ndims = 80)</p>
+<p class="p1">DimPlot(young.combined)</p>
+<p class="p2"><br></p>
+<p class="p1">all.genes &lt;- rownames(x = old.combined)</p>
+<p class="p1">old.combined &lt;- ScaleData(old.combined , verbose = T)</p>
+<p class="p1">old.combined<span class="Apple-converted-space">  </span>&lt;- RunPCA(old.combined , npcs = 100, verbose = T)</p>
+<p class="p1">ElbowPlot(object = old.combined, ndims = 80)</p>
+<p class="p1">DimPlot(old.combined)</p>
+<p class="p2"><br></p>
+<p class="p1"># t-SNE and Clustering<span class="Apple-converted-space">  </span>-----------------------------------------------------------</p>
+<p class="p1">young.combined &lt;- RunUMAP(young.combined, reduction = "pca", dims = 1:40, seed.use = 42)</p>
+<p class="p1">young.combined &lt;- FindNeighbors(young.combined, reduction = "pca", dims = 1:40)</p>
+<p class="p1">young.combined &lt;- FindClusters(young.combined, resolution = 2)</p>
+<p class="p2"><br></p>
+<p class="p1">old.combined &lt;- RunUMAP(old.combined, reduction = "pca", dims = 1:40, seed.use = 42)</p>
+<p class="p1">old.combined &lt;- FindNeighbors(old.combined, reduction = "pca", dims = 1:40)</p>
+<p class="p1">old.combined &lt;- FindClusters(old.combined, resolution = 2)</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># SUBSET young ---------------------------------------------------------------</p>
+<p class="p1">neurons &lt;- subset(young.combined, subset = Syt1&gt; 1 | Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1 | Gad1 &gt; 1 | Gad2 &gt; 1 | Slc18a3 &gt; 1| Gm5741 &gt; 1 | Slc5a7 &gt; 1 | Slc18a2 &gt; 1 | Th &gt;1)</p>
+<p class="p1">neurons &lt;- NormalizeData(object = neurons, verbose = FALSE)</p>
+<p class="p1">neurons &lt;- ScaleData(neurons)</p>
+<p class="p1">neurons &lt;- FindVariableFeatures(object = neurons, selection.method = "vst", nfeatures = 2000)</p>
+<p class="p1">neurons &lt;- RunPCA(object = neurons, features = VariableFeatures(object = neurons), npcs = 100)</p>
+<p class="p1">ElbowPlot(object = neurons, ndims = 100)</p>
+<p class="p1">neurons &lt;- FindNeighbors(neurons, dims = 1:30)</p>
+<p class="p1">neurons &lt;- FindClusters(object = neurons, resolution = 1)</p>
+<p class="p1">neurons &lt;- RunUMAP(object = neurons, dims = 1:30)</p>
+<p class="p1">DimPlot(object = neurons, reduction = "umap", label = TRUE)</p>
+<p class="p2"><br></p>
+<p class="p1"># Co-expression quantification -----------------------------------------------------------</p>
+<p class="p1">###GABAergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = Gad1 &gt; 1 | Gad2 &gt; 1)) #2120 cells</p>
+<p class="p1">###Glutamatergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1)) #756 cells</p>
+<p class="p1">###Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1)) #85 cells</p>
+<p class="p1">###Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = Slc18a2 &gt; 1 | Th &gt; 1 )) #309 cells</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1))) #58 cells</p>
+<p class="p1">###GABAergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; ( Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1))) #7 cells</p>
+<p class="p1">###GABAergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression =(Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #272 cells</p>
+<p class="p1">###Glutamatergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp;<span class="Apple-converted-space">  </span>Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1)) #82 cells</p>
+<p class="p1">###Glutamatergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #6 cells</p>
+<p class="p1">###Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #2 cells</p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1))) #0 cells</p>
+<p class="p1">###GABAergic and Glutamatergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #1 cells</p>
+<p class="p1">###GABAergic and Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #0 cells</p>
+<p class="p1">###Glutamatergic and Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc17a8 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #2 cells</p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic and Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #0 cells</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p1">library(UpSetR)</p>
+<p class="p1">##Input</p>
+<p class="p1">expressionInput &lt;- c(GABAergic_Neurons = 2120,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 756,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons= 85,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Aminergic_Neurons=309,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons` = 58,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 7,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Aminergic_Neurons` = 272,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 82,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Aminergic_Neurons` = 6,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Aminergic_Neurons` = 2, <span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons`= 0,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Aminergic_Neurons`= 1,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 0,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 2,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 0</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>)</p>
+<p class="p2"><br></p>
+<p class="p1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("deepskyblue3", "limegreen" ,"chocolate2", "violetred2" ), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p2"><br></p>
+<p class="p1">plot1&lt;-FeaturePlot(neurons, features = c("Gad1"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90")+ theme_void()</p>
+<p class="p1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot2&lt;-FeaturePlot(neurons, features = c("Slc17a7"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot3&lt;-FeaturePlot(neurons, features = c("Slc17a6"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot3&lt;-AugmentPlot(plot3, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot4&lt;-FeaturePlot(neurons, features = c("Slc18a3"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot4&lt;-AugmentPlot(plot4, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot5&lt;-FeaturePlot(neurons, features = c("Th"), cols = c("lightgrey", "chocolate2"), min.cutoff = "q10", max.cutoff = "q90") + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot5&lt;-AugmentPlot(plot5, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># SUBSET old -----------------------------------------------------------</p>
+<p class="p1">neurons.old &lt;- subset(old.combined, subset = Syt1&gt; 1 | Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1 | Gad1 &gt; 1 | Gad2 &gt; 1 | Slc18a3 &gt; 1| Gm5741 &gt; 1 | Slc5a7 &gt; 1 | Slc18a2 &gt; 1 | Th &gt;1)</p>
+<p class="p1">neurons.old &lt;- NormalizeData(object = neurons.old, verbose = FALSE)</p>
+<p class="p1">neurons.old &lt;- ScaleData(neurons.old)</p>
+<p class="p1">neurons.old &lt;- FindVariableFeatures(object = neurons.old, selection.method = "vst", nfeatures = 2000)</p>
+<p class="p1">neurons.old &lt;- RunPCA(object = neurons.old, features = VariableFeatures(object = neurons.old), npcs = 100)</p>
+<p class="p1">ElbowPlot(object = neurons.old, ndims = 100)</p>
+<p class="p1">neurons.old &lt;- FindNeighbors(neurons.old, dims = 1:30)</p>
+<p class="p1">neurons.old &lt;- FindClusters(object = neurons.old, resolution = 1)</p>
+<p class="p1">neurons.old &lt;- RunUMAP(object = neurons.old, dims = 1:30)</p>
+<p class="p1">DimPlot(object = neurons.old, reduction = "umap", label = TRUE)</p>
+<p class="p2"><br></p>
+<p class="p1"># Co-expression quantification -----------------------------------------------------------</p>
+<p class="p1">###GABAergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = Gad1 &gt; 1 | Gad2 &gt; 1)) #3260 cells</p>
+<p class="p1">###Glutamatergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1)) #952 cells</p>
+<p class="p1">###Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1)) #104 cells</p>
+<p class="p1">###Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = Slc18a2 &gt; 1 | Th &gt; 1 )) #525 cells</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1))) #109 cells</p>
+<p class="p1">###GABAergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; ( Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1))) #14 cells</p>
+<p class="p1">###GABAergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression =(Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #435 cells</p>
+<p class="p1">###Glutamatergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp;<span class="Apple-converted-space">  </span>Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1)) #102 cells</p>
+<p class="p1">###Glutamatergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #24 cells</p>
+<p class="p1">###Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #5 cells</p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic and Cholinergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1))) #1 cells</p>
+<p class="p1">###GABAergic and Glutamatergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #11 cells</p>
+<p class="p1">###GABAergic and Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #2 cells</p>
+<p class="p1">###Glutamatergic and Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc17a8 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #4 cells</p>
+<p class="p2"><br></p>
+<p class="p1">###GABAergic and Glutamatergic and Cholinergic and Aminergic</p>
+<p class="p1">length(WhichCells(object = neurons.old, expression = (Gad1 &gt; 1 | Gad2 &gt; 1) &amp; (Slc17a7 &gt; 1 | Slc17a6 &gt; 1 | Slc17a8 &gt; 1) &amp; (Slc18a3 &gt; 1 | Gm5741 &gt; 1 | Slc5a7 &gt; 1) &amp; (Slc18a2 &gt; 1 | Th &gt; 1))) #1 cells</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># UpSet Plot ------------------------------------------------------------</p>
+<p class="p1">library(UpSetR)</p>
+<p class="p1">##Input</p>
+<p class="p1">expressionInput &lt;- c(GABAergic_Neurons = 3260,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Glutamatergic_Neurons = 952,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Cholinergic_Neurons= 104,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>Aminergic_Neurons=525,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons` = 109,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons` = 14,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Aminergic_Neurons` = 435,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons` = 102,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Aminergic_Neurons` = 24,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Cholinergic_Neurons&amp;Aminergic_Neurons` = 5, <span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons`= 1,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Aminergic_Neurons`= 11,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 2,</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 4,<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                     </span></p>
+<p class="p1"><span class="Apple-converted-space">                     </span>`GABAergic_Neurons&amp;Glutamatergic_Neurons&amp;Cholinergic_Neurons&amp;Aminergic_Neurons`= 1</p>
+<p class="p1">)</p>
+<p class="p2"><br></p>
+<p class="p1">upset(fromExpression(expressionInput), empty.intersections = "on",<span class="Apple-converted-space">  </span>sets.bar.color = c("deepskyblue3", "limegreen" ,"chocolate2", "violetred2" ), set_size.show = F, mainbar.y.label="Number of cells", keep.order = T, point.size = 4, matrix.color = "black", main.bar.color= "black", text.scale = 2)</p>
+<p class="p2"><br></p>
+<p class="p1">plot1&lt;-FeaturePlot(neurons.old, features = c("Gad1"), cols = c("lightgrey", "deepskyblue3"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1)+ theme_void()</p>
+<p class="p1">plot1&lt;-AugmentPlot(plot1, dpi = 200)</p>
+<p class="p1">plot1</p>
+<p class="p2"><br></p>
+<p class="p1">plot2&lt;-FeaturePlot(neurons.old, features = c("Slc17a7"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1) + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot2&lt;-AugmentPlot(plot2, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot3&lt;-FeaturePlot(neurons.old, features = c("Slc17a6"), cols = c("lightgrey", "limegreen"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1) + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot3&lt;-AugmentPlot(plot3, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot4&lt;-FeaturePlot(neurons.old, features = c("Gm5741"), cols = c("lightgrey", "violetred2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1) + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot4&lt;-AugmentPlot(plot4, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p1">plot5&lt;-FeaturePlot(neurons.old, features = c("Th"), cols = c("lightgrey", "chocolate2"), min.cutoff = "q10", max.cutoff = "q90", pt.size = 1) + theme_void()<span class="Apple-converted-space"> </span></p>
+<p class="p1">plot5&lt;-AugmentPlot(plot5, dpi = 200)</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"># Comparison ----------------------------------------------------</p>
+<p class="p1">DF &lt;- read.table(text="Neurotransmitters<span class="Apple-converted-space">      </span>Young_Adult <span class="Apple-converted-space">  </span>Old_Adult</p>
+<p class="p1">GABAergic/Glutamatergic<span class="Apple-converted-space">        </span>1.74 <span class="Apple-converted-space">    </span>3.32</p>
+<p class="p1">GABAergic/Cholinergic<span class="Apple-converted-space">        </span>0.21 <span class="Apple-converted-space">  </span>0.43</p>
+<p class="p1">GABAergic/Aminergic<span class="Apple-converted-space">        </span>8.16 <span class="Apple-converted-space">  </span>13.3</p>
+<p class="p1">Glutamatergic/Cholinergic<span class="Apple-tab-span">	</span><span class="Apple-converted-space">        </span>2.46<span class="Apple-converted-space">    </span>3.11</p>
+<p class="p1">Glutamatergic/Aminergic <span class="Apple-converted-space">      </span>0.18<span class="Apple-converted-space">    </span>0.73</p>
+<p class="p1">Cholinergic/Aminergic<span class="Apple-converted-space">        </span>0.06 <span class="Apple-converted-space">  </span>0.15", header=TRUE)</p>
+<p class="p1">DF</p>
+<p class="p2"><br></p>
+<p class="p1">library(reshape2)</p>
+<p class="p1">DF1 &lt;- melt(DF, id.var="Neurotransmitters")</p>
+<p class="p1">DF1</p>
+<p class="p2"><br></p>
+<p class="p1">DF1$Neurotransmitters2 &lt;- factor(DF1$Neurotransmitters, levels = c("GABAergic/Glutamatergic", "GABAergic/Cholinergic", "GABAergic/Aminergic", "Glutamatergic/Cholinergic", "Glutamatergic/Aminergic", "Cholinergic/Aminergic"))</p>
+<p class="p1">DF1</p>
+<p class="p2"><br></p>
+<p class="p1">ggplot(data=DF1, aes(x=Neurotransmitters2, y=value, fill=variable)) +</p>
+<p class="p1"><span class="Apple-converted-space">  </span>geom_bar(stat="identity", position=position_dodge())+</p>
+<p class="p1"><span class="Apple-converted-space">  </span>geom_text(aes(label=value), vjust=1.6, color="black",</p>
+<p class="p1"><span class="Apple-converted-space">            </span>position = position_dodge(0.9), size=3.5) + labs(x="Neurotransmitters", y="Percentage") + scale_fill_manual(name = "Condition", values = c("green", "red", "blue"))<span class="Apple-converted-space">  </span>+</p>
+<p class="p1"><span class="Apple-converted-space">  </span>coord_flip()</p>
+</body>
+</html>
